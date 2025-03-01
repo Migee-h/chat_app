@@ -1,4 +1,47 @@
 // 聊天服务封装
+
+// 读取示例对话文件
+export async function readExampleConversation() {
+  try {
+    const response = await fetch('/src/assets/example_conversation.txt');
+    const text = await response.text();
+    const exampleMessages = [];
+    
+    const lines = text.split('\n');
+    let role = null;
+    let content = [];
+    
+    for (const line of lines) {
+      if (line.startsWith('user: ')) {
+        if (role) {
+          exampleMessages.push({ role, content: content.join(' ').trim() });
+          content = [];
+        }
+        role = 'user';
+        content.push(line.substring(6));
+      } else if (line.startsWith('assistant: ')) {
+        if (role) {
+          exampleMessages.push({ role, content: content.join(' ').trim() });
+          content = [];
+        }
+        role = 'assistant';
+        content.push(line.substring(11));
+      } else if (line.trim()) {
+        content.push(line);
+      }
+    }
+    
+    if (role) {
+      exampleMessages.push({ role, content: content.join(' ').trim() });
+    }
+    
+    return exampleMessages;
+  } catch (error) {
+    console.error('读取示例对话文件失败:', error);
+    return [];
+  }
+}
+
 export async function chatWithAI(messages, onProgress, onError) {
   try {
     const requestBody = {
