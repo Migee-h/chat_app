@@ -1,12 +1,39 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { chatWithAI, readExampleConversation } from '../services/chatService';
+import { synthesizeSpeech } from '../services/ttsService';
 
 const messages = ref([]);
 const inputMessage = ref('');
 const isLoading = ref(false);
 const error = ref(null);
 const currentResponse = ref('');
+const playingMessageId = ref(null);
+
+const playMessage = async (text, messageId) => {
+  try {
+    if (playingMessageId.value === messageId) {
+      playingMessageId.value = null;
+      return;
+    }
+    playingMessageId.value = messageId;
+    
+    const audioData = await synthesizeSpeech(text);
+    if (!audioData) {
+      playingMessageId.value = null;
+      return;
+    }
+    
+    const audio = new Audio(`data:audio/mp3;base64,${audioData}`);
+    audio.onended = () => {
+      playingMessageId.value = null;
+    };
+    audio.play();
+  } catch (error) {
+    console.error('播放语音失败:', error);
+    playingMessageId.value = null;
+  }
+};
 
 const sendMessage = async () => {
   if (!inputMessage.value.trim()) return;
@@ -69,6 +96,14 @@ const sendMessage = async () => {
       <div v-for="(msg, index) in messages" :key="index" class="message" :class="msg.role">
         <div class="message-content">
           {{ msg.content }}
+          <button
+            v-if="msg.role === 'assistant'"
+            class="play-button"
+            :class="{ 'playing': playingMessageId === index }"
+            @click="playMessage(msg.content, index)"
+          >
+            <span class="play-icon">{{ playingMessageId === index ? '⏸' : '▶' }}</span>
+          </button>
         </div>
       </div>
       <div v-if="currentResponse" class="message assistant">
@@ -139,6 +174,38 @@ const sendMessage = async () => {
   font-size: 14px;
   line-height: 1.5;
   white-space: pre-wrap;
+  position: relative;
+}
+
+.play-button {
+  position: absolute;
+  right: -40px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #007AFF;
+  border: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.play-button:hover {
+  background: #0056b3;
+}
+
+.play-button.playing {
+  background: #dc3545;
+}
+
+.play-icon {
+  font-size: 16px;
+  line-height: 1;
 }
 
 .user .message-content {

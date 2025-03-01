@@ -87,12 +87,12 @@ export async function chatWithAI(messages, onProgress, onError) {
         buffer = buffer.slice(newlineIndex + 1);
 
         if (line.startsWith('data: ')) {
+          const content = line.slice(6).trim();
+          if (content === '[DONE]') {
+            return;
+          }
           try {
-            const jsonData = JSON.parse(line.slice(6).trim());
-            
-            if (jsonData.completed) {
-              return;
-            }
+            const jsonData = JSON.parse(content);
             
             if (jsonData.choices?.[0]?.delta?.content) {
               const content = jsonData.choices[0].delta.content;
