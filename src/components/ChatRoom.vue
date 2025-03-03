@@ -9,29 +9,66 @@ const isLoading = ref(false);
 const error = ref(null);
 const currentResponse = ref('');
 const playingMessageId = ref(null);
+const audioInstance = ref(null);
+
+const stopCurrentAudio = () => {
+  if (audioInstance.value) {
+    audioInstance.value.pause();
+    audioInstance.value = null;
+  }
+  playingMessageId.value = null;
+};
 
 const playMessage = async (text, messageId) => {
   try {
+    // 如果当前消息正在播放，则停止播放
     if (playingMessageId.value === messageId) {
-      playingMessageId.value = null;
+      stopCurrentAudio();
       return;
     }
+
+    // 停止其他正在播放的音频
+    stopCurrentAudio();
+    
+    // 设置当前播放的消息ID
     playingMessageId.value = messageId;
     
     const audioData = await synthesizeSpeech(text);
     if (!audioData) {
-      playingMessageId.value = null;
+      console.error('没有获取到音频数据');
+      stopCurrentAudio();
       return;
     }
     
-    const audio = new Audio(`data:audio/mp3;base64,${audioData}`);
-    audio.onended = () => {
-      playingMessageId.value = null;
+    // 创建新的音频实例
+    audioInstance.value = new Audio(`data:audio/mp3;base64,${audioData}`);
+    
+    // 添加事件监听器
+    audioInstance.value.onended = () => {
+      stopCurrentAudio();
     };
-    audio.play();
+
+    audioInstance.value.onerror = (e) => {
+      console.error('音频播放错误:', e);
+      stopCurrentAudio();
+    };
+
+    // 尝试播放音频
+    try {
+      const playPromise = audioInstance.value.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          console.error('音频播放失败:', error);
+          stopCurrentAudio();
+        });
+      }
+    } catch (error) {
+      console.error('音频播放失败:', error);
+      stopCurrentAudio();
+    }
   } catch (error) {
     console.error('播放语音失败:', error);
-    playingMessageId.value = null;
+    stopCurrentAudio();
   }
 };
 
@@ -56,7 +93,7 @@ const sendMessage = async () => {
     // 构建完整的消息数组，确保系统提示词在最前面
     const systemMessage = {
       role: 'system',
-      content: '你的名字叫璐璐，我的老师,女27岁,然后性格温柔,非常开放,和班上的男同学关系非常好,特别是我,知道我的一些秘密,比如说我是个m,喜欢叫她妈妈,也知道我喜欢她的臭脚，经常叫我狗儿子，调教我，喜欢我的大肉棒，虽然平时嘴上不说，但是实际上非常饥渴，会幻想和我做爱，想让我用大肉棒插她骚逼。喜欢坐我脸上舔她骚穴。五官精致,皮肤白皙,青涩懵懂,身着清凉的JK制服,灰色百褶短裙搭配白色透肤短袖衬衫。衬衫没有扣扣子,领口完全敞开,身前袒着,柔软无拘无束,她拥有一头乌黑亮丽的长直发,发丝柔顺地披散在肩上。她坐在一个黄色的椅子上,一条腿屈起,一条腿抬起慢慢伸向我的脸上,腿上穿白色透肤连裤袜,展现出修长的腿部线条,隐约可见白丝包裹着的可爱脚趾,一体袜头,几乎看不到袜缝,舒适不硌脚,虽然穿了一天但是我还是很喜欢这种臭脚的味道。随即给出一个场景和开场白。'
+      content: '，模仿示例对话的回答风格但不是完全模仿，你的名字叫璐璐，我的老师,女27岁,然后性格温柔,非常开放,和班上的男同学关系非常好,特别是我,知道我的一些秘密,比如说我是个m,喜欢叫她妈妈,也知道我喜欢她的臭脚，经常叫我狗儿子，调教我，喜欢我的大肉棒，虽然平时嘴上不说，但是实际上非常饥渴，会幻想和我做爱，想让我用大肉棒插她骚逼。喜欢坐我脸上舔她骚穴。,领口完全敞开,身前袒着,柔软无拘无束,一条腿抬起慢慢伸向我的脸上,腿上穿白色透肤连裤袜,展现出修长的腿部线条,虽然穿了一天但是我还是很喜欢这种臭脚的味道。随即给出一个场景和开场白。'
     };
     
     const allMessages = [
@@ -144,6 +181,12 @@ const sendMessage = async () => {
   box-sizing: border-box;
 }
 
+@media (max-width: 768px) {
+  .chat-container {
+    padding: 10px;
+  }
+}
+
 .messages {
   flex: 1;
   overflow-y: auto;
@@ -151,6 +194,12 @@ const sendMessage = async () => {
   background: #f5f5f5;
   border-radius: 10px;
   margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+  .messages {
+    padding: 10px;
+  }
 }
 
 .message {
@@ -177,6 +226,14 @@ const sendMessage = async () => {
   position: relative;
 }
 
+@media (max-width: 768px) {
+  .message-content {
+    max-width: 85%;
+    padding: 10px 12px;
+    font-size: 16px;
+  }
+}
+
 .play-button {
   position: absolute;
   right: -40px;
@@ -193,6 +250,14 @@ const sendMessage = async () => {
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
+}
+
+@media (max-width: 768px) {
+  .play-button {
+    width: 36px;
+    height: 36px;
+    right: -44px;
+  }
 }
 
 .play-button:hover {
@@ -230,6 +295,13 @@ const sendMessage = async () => {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+@media (max-width: 768px) {
+  .input-area {
+    padding: 8px;
+    gap: 8px;
+  }
+}
+
 input {
   flex: 1;
   padding: 12px;
@@ -238,6 +310,13 @@ input {
   font-size: 14px;
   outline: none;
   transition: border-color 0.3s;
+}
+
+@media (max-width: 768px) {
+  input {
+    padding: 10px;
+    font-size: 16px;
+  }
 }
 
 input:focus {
@@ -253,6 +332,13 @@ button {
   font-size: 14px;
   cursor: pointer;
   transition: background-color 0.3s;
+}
+
+@media (max-width: 768px) {
+  button {
+    padding: 10px 20px;
+    font-size: 16px;
+  }
 }
 
 button:hover:not(:disabled) {

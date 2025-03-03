@@ -3,25 +3,34 @@
 // 读取示例对话文件
 export async function readExampleConversation() {
   try {
+    console.log('开始读取示例对话文件...');
     const response = await fetch('/src/assets/example_conversation.txt');
     const text = await response.text();
-    const exampleMessages = [];
+    console.log('文件内容长度:', text.length);
     
+    const exampleMessages = [];
     const lines = text.split('\n');
+    console.log('总行数:', lines.length);
+    
     let role = null;
     let content = [];
+    let messageCount = 0;
     
     for (const line of lines) {
       if (line.startsWith('user: ')) {
         if (role) {
-          exampleMessages.push({ role, content: content.join(' ').trim() });
+          const message = { role, content: content.join('\n').trim() };
+          exampleMessages.push(message);
+          messageCount++;
           content = [];
         }
         role = 'user';
         content.push(line.substring(6));
       } else if (line.startsWith('assistant: ')) {
         if (role) {
-          exampleMessages.push({ role, content: content.join(' ').trim() });
+          const message = { role, content: content.join('\n').trim() };
+          exampleMessages.push(message);
+          messageCount++;
           content = [];
         }
         role = 'assistant';
@@ -31,9 +40,14 @@ export async function readExampleConversation() {
       }
     }
     
-    if (role) {
-      exampleMessages.push({ role, content: content.join(' ').trim() });
+    if (role && content.length > 0) {
+      const message = { role, content: content.join('\n').trim() };
+      exampleMessages.push(message);
+      messageCount++;
     }
+    
+    console.log('成功解析消息数量:', messageCount);
+    console.log('示例对话数组长度:', exampleMessages.length);
     
     return exampleMessages;
   } catch (error) {
