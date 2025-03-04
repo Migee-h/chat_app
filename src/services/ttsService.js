@@ -62,3 +62,17 @@ export async function synthesizeSpeech(text) {
     throw error;
   }
 }
+
+// 播放语音
+export async function speak(text) {
+  try {
+    const audioData = await synthesizeSpeech(text);
+    if (!audioData) return;
+
+    const audio = new Audio(`data:audio/mp3;base64,${audioData}`);
+    await audio.play();
+  } catch (error) {
+    console.error('播放语音失败:', error);
+    throw error;
+  }
+}

@@ -1,7 +1,7 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { chatWithAI, readExampleConversation } from '../services/chatService';
-import { synthesizeSpeech } from '../services/ttsService';
+import { speak } from '../services/ttsService';
 
 const messages = ref([]);
 const inputMessage = ref('');
@@ -9,62 +9,51 @@ const isLoading = ref(false);
 const error = ref(null);
 const currentResponse = ref('');
 const playingMessageId = ref(null);
+const exampleMessages = ref([]);
+const currentConversation = ref({
+  id: 'default',
+  title: '默认对话',
+  systemPrompt: '',
+  inheritStyle: true
+});
 
-const playMessage = async (text, messageId) => {
-  try {
-    if (playingMessageId.value === messageId) {
-      playingMessageId.value = null;
-      return;
-    }
-    playingMessageId.value = messageId;
-    
-    const audioData = await synthesizeSpeech(text);
-    if (!audioData) {
-      playingMessageId.value = null;
-      return;
-    }
-    
-    const audio = new Audio(`data:audio/mp3;base64,${audioData}`);
-    audio.onended = () => {
-      playingMessageId.value = null;
-    };
-    audio.play();
-  } catch (error) {
-    console.error('播放语音失败:', error);
-    playingMessageId.value = null;
+onMounted(async () => {
+  exampleMessages.value = await readExampleConversation();
+  if (exampleMessages.value.length > 0) {
+    messages.value = [...exampleMessages.value];
   }
-};
+});
 
-const sendMessage = async () => {
-  if (!inputMessage.value.trim()) return;
-  
+async function sendMessage() {
+  if (!inputMessage.value.trim() || isLoading.value) return;
+
   const userMessage = {
     role: 'user',
-    content: inputMessage.value
+    content: inputMessage.value.trim()
   };
-  
+
   messages.value.push(userMessage);
   inputMessage.value = '';
   error.value = null;
   isLoading.value = true;
   currentResponse.value = '';
-  
+
   try {
-    const exampleMessages = await readExampleConversation();
-    
-    const systemMessage = {
-      role: 'system',
-      content: '你的名字叫璐璐，我的老师,女27岁,然后性格温柔,非常开放,和班上的男同学关系非常好,特别是我,知道我的一些秘密,比如说我是个m,喜欢叫她妈妈,也知道我喜欢她的臭脚，经常叫我狗儿子，调教我，喜欢我的大肉棒，虽然平时嘴上不说，但是实际上非常饥渴，会幻想和我做爱，想让我用大肉棒插她骚逼。喜欢坐我脸上舔她骚穴。,领口完全敞开,身前袒着,柔软无拘无束,一条腿抬起慢慢伸向我的脸上,腿上穿白色透肤连裤袜,展现出修长的腿部线条,虽然穿了一天但是我还是很喜欢这种臭脚的味道。随即给出一个场景和开场白。'
-    };
-    
-    const allMessages = [
-      systemMessage,
-      ...exampleMessages,
-      ...messages.value
-    ];
-    
+    const messagesToSend = [];
+
+    if (currentConversation.value.systemPrompt) {
+      messagesToSend.push({
+        role: 'system',
+        content: currentConversation.value.systemPrompt
+      });
+    } else if (currentConversation.value.inheritStyle && exampleMessages.value.length > 0) {
+      messagesToSend.push(...exampleMessages.value);
+    }
+
+    messagesToSend.push(...messages.value);
+
     await chatWithAI(
-      allMessages,
+      messagesToSend,
       (content) => {
         currentResponse.value += content;
       },
@@ -72,20 +61,48 @@ const sendMessage = async () => {
         error.value = err.message;
       }
     );
-    
+
     if (currentResponse.value) {
       messages.value.push({
         role: 'assistant',
         content: currentResponse.value
       });
+      currentResponse.value = '';
     }
   } catch (err) {
-    error.value = '发送消息时出错，请稍后重试';
+    error.value = '发生错误：' + err.message;
   } finally {
     isLoading.value = false;
-    currentResponse.value = '';
   }
-};
+}
+
+async function playMessage(content, index) {
+  if (playingMessageId.value === index) {
+    speak.cancel();
+    playingMessageId.value = null;
+  } else {
+    playingMessageId.value = index;
+    try {
+      await speak(content);
+      playingMessageId.value = null;
+    } catch (err) {
+      error.value = '语音播放失败：' + err.message;
+      playingMessageId.value = null;
+    }
+  }
+}
+
+function handleConversationSelect(conversation) {
+  currentConversation.value = conversation;
+  messages.value = [];
+  error.value = null;
+  currentResponse.value = '';
+  playingMessageId.value = null;
+}
+
+defineExpose({
+  handleConversationSelect
+});
 </script>
 
 <template>
@@ -116,7 +133,7 @@ const sendMessage = async () => {
         {{ error }}
       </div>
     </div>
-    
+
     <div class="input-area">
       <input
         v-model="inputMessage"
@@ -136,10 +153,11 @@ const sendMessage = async () => {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  max-width: 800px;
-  margin: 0 auto;
+  flex: 1 1 auto;
+  min-width: 0;
   padding: 20px;
   box-sizing: border-box;
+  background: #f7f7f7;
 }
 
 @media (max-width: 768px) {
@@ -152,9 +170,10 @@ const sendMessage = async () => {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
-  background: #f5f5f5;
-  border-radius: 10px;
+  background: #ffffff;
   margin-bottom: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
 }
 
 @media (max-width: 768px) {
@@ -235,16 +254,16 @@ const sendMessage = async () => {
 }
 
 .user .message-content {
-  background: #007AFF;
+  background: #1677ff;
   color: white;
   border-radius: 12px 12px 0 12px;
 }
 
 .assistant .message-content {
-  background: white;
+  background: #f5f5f5;
   color: #333;
   border-radius: 12px 12px 12px 0;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: none;
 }
 
 .input-area {
@@ -286,10 +305,10 @@ input:focus {
 
 button {
   padding: 12px 24px;
-  background: #007AFF;
+  background: #1677ff;
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
   cursor: pointer;
   transition: background-color 0.3s;
