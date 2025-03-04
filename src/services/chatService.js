@@ -7,15 +7,15 @@ export async function readExampleConversation() {
     const response = await fetch('/src/assets/example_conversation.txt');
     const text = await response.text();
     console.log('文件内容长度:', text.length);
-    
+
     const exampleMessages = [];
     const lines = text.split('\n');
     console.log('总行数:', lines.length);
-    
+
     let role = null;
     let content = [];
     let messageCount = 0;
-    
+
     for (const line of lines) {
       if (line.startsWith('user: ')) {
         if (role) {
@@ -39,16 +39,16 @@ export async function readExampleConversation() {
         content.push(line);
       }
     }
-    
+
     if (role && content.length > 0) {
       const message = { role, content: content.join('\n').trim() };
       exampleMessages.push(message);
       messageCount++;
     }
-    
+
     console.log('成功解析消息数量:', messageCount);
     console.log('示例对话数组长度:', exampleMessages.length);
-    
+
     return exampleMessages;
   } catch (error) {
     console.error('读取示例对话文件失败:', error);
@@ -107,7 +107,7 @@ export async function chatWithAI(messages, onProgress, onError) {
           }
           try {
             const jsonData = JSON.parse(content);
-            
+
             if (jsonData.choices?.[0]?.delta?.content) {
               const content = jsonData.choices[0].delta.content;
               onProgress?.(content);
