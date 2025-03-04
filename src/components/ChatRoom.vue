@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
 import { chatWithAI, readExampleConversation } from '../services/chatService';
 import { synthesizeSpeech } from '../services/ttsService';
 
@@ -9,66 +9,29 @@ const isLoading = ref(false);
 const error = ref(null);
 const currentResponse = ref('');
 const playingMessageId = ref(null);
-const audioInstance = ref(null);
-
-const stopCurrentAudio = () => {
-  if (audioInstance.value) {
-    audioInstance.value.pause();
-    audioInstance.value = null;
-  }
-  playingMessageId.value = null;
-};
 
 const playMessage = async (text, messageId) => {
   try {
-    // 如果当前消息正在播放，则停止播放
     if (playingMessageId.value === messageId) {
-      stopCurrentAudio();
+      playingMessageId.value = null;
       return;
     }
-
-    // 停止其他正在播放的音频
-    stopCurrentAudio();
-    
-    // 设置当前播放的消息ID
     playingMessageId.value = messageId;
     
     const audioData = await synthesizeSpeech(text);
     if (!audioData) {
-      console.error('没有获取到音频数据');
-      stopCurrentAudio();
+      playingMessageId.value = null;
       return;
     }
     
-    // 创建新的音频实例
-    audioInstance.value = new Audio(`data:audio/mp3;base64,${audioData}`);
-    
-    // 添加事件监听器
-    audioInstance.value.onended = () => {
-      stopCurrentAudio();
+    const audio = new Audio(`data:audio/mp3;base64,${audioData}`);
+    audio.onended = () => {
+      playingMessageId.value = null;
     };
-
-    audioInstance.value.onerror = (e) => {
-      console.error('音频播放错误:', e);
-      stopCurrentAudio();
-    };
-
-    // 尝试播放音频
-    try {
-      const playPromise = audioInstance.value.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(error => {
-          console.error('音频播放失败:', error);
-          stopCurrentAudio();
-        });
-      }
-    } catch (error) {
-      console.error('音频播放失败:', error);
-      stopCurrentAudio();
-    }
+    audio.play();
   } catch (error) {
     console.error('播放语音失败:', error);
-    stopCurrentAudio();
+    playingMessageId.value = null;
   }
 };
 
@@ -87,13 +50,11 @@ const sendMessage = async () => {
   currentResponse.value = '';
   
   try {
-    // 获取示例对话
     const exampleMessages = await readExampleConversation();
     
-    // 构建完整的消息数组，确保系统提示词在最前面
     const systemMessage = {
       role: 'system',
-      content: '，模仿示例对话的回答风格但不是完全模仿，你的名字叫璐璐，我的老师,女27岁,然后性格温柔,非常开放,和班上的男同学关系非常好,特别是我,知道我的一些秘密,比如说我是个m,喜欢叫她妈妈,也知道我喜欢她的臭脚，经常叫我狗儿子，调教我，喜欢我的大肉棒，虽然平时嘴上不说，但是实际上非常饥渴，会幻想和我做爱，想让我用大肉棒插她骚逼。喜欢坐我脸上舔她骚穴。,领口完全敞开,身前袒着,柔软无拘无束,一条腿抬起慢慢伸向我的脸上,腿上穿白色透肤连裤袜,展现出修长的腿部线条,虽然穿了一天但是我还是很喜欢这种臭脚的味道。随即给出一个场景和开场白。'
+      content: '你的名字叫璐璐，我的老师,女27岁,然后性格温柔,非常开放,和班上的男同学关系非常好,特别是我,知道我的一些秘密,比如说我是个m,喜欢叫她妈妈,也知道我喜欢她的臭脚，经常叫我狗儿子，调教我，喜欢我的大肉棒，虽然平时嘴上不说，但是实际上非常饥渴，会幻想和我做爱，想让我用大肉棒插她骚逼。喜欢坐我脸上舔她骚穴。,领口完全敞开,身前袒着,柔软无拘无束,一条腿抬起慢慢伸向我的脸上,腿上穿白色透肤连裤袜,展现出修长的腿部线条,虽然穿了一天但是我还是很喜欢这种臭脚的味道。随即给出一个场景和开场白。'
     };
     
     const allMessages = [

@@ -7,7 +7,11 @@ const BASE_URL = '/tts-api';
 
 // 过滤括号内的内容
 function filterBracketContent(text) {
-  return text.replace(/\([^\)]+\)/g, '').trim();
+  // 过滤英文括号和中文括号内的内容
+  return text
+    .replace(/[\(\（][^\)\）]*[\)\）]/g, '') // 匹配中英文括号
+    .replace(/\s+/g, ' ') // 合并多个空格
+    .trim();
 }
 
 // 语音合成API调用
