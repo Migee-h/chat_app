@@ -19,7 +19,7 @@ const currentConversation = ref({
 
 onMounted(async () => {
   exampleMessages.value = await readExampleConversation();
-  if (exampleMessages.value.length > 0) {
+  if (exampleMessages.value.length > 0 && currentConversation.value.inheritStyle) {
     messages.value = [...exampleMessages.value];
   }
 });
@@ -98,6 +98,10 @@ function handleConversationSelect(conversation) {
   error.value = null;
   currentResponse.value = '';
   playingMessageId.value = null;
+
+  if (conversation.inheritStyle && exampleMessages.value.length > 0) {
+    messages.value = [...exampleMessages.value];
+  }
 }
 
 defineExpose({
@@ -158,11 +162,30 @@ defineExpose({
   padding: 20px;
   box-sizing: border-box;
   background: #f7f7f7;
+  position: relative;
 }
 
 @media (max-width: 768px) {
   .chat-container {
-    padding: 10px;
+    padding: 60px 10px 10px;
+    width: 100%;
+    height: calc(100% - env(safe-area-inset-bottom));
+  }
+
+  .input-area {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 8px;
+    background: white;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+  }
+
+  .messages {
+    margin-bottom: 60px;
+    padding-bottom: 20px;
   }
 }
 

@@ -59,29 +59,20 @@ function createNewConversation() {
         :class="{ active: selectedConversationId === conv.id }"
         @click="selectConversation(conv.id)"
       >
-        <span class="title">{{ conv.title }}</span>
+        <div class="title">{{ conv.title }}</div>
       </div>
     </div>
 
-    <!-- 新建对话对话框 -->
-    <div v-if="showNewConversationDialog" class="dialog-overlay">
-      <div class="dialog">
+    <div v-if="showNewConversationDialog" class="dialog-overlay" @click="showNewConversationDialog = false">
+      <div class="dialog" @click.stop>
         <h3>新建对话</h3>
         <div class="form-group">
           <label>对话标题</label>
-          <input
-            v-model="newConversationTitle"
-            placeholder="请输入对话标题"
-            @keyup.enter="createNewConversation"
-          />
+          <input v-model="newConversationTitle" placeholder="请输入对话标题" />
         </div>
         <div class="form-group">
           <label>系统提示词</label>
-          <textarea
-            v-model="newSystemPrompt"
-            placeholder="请输入系统提示词（可选）"
-            rows="4"
-          ></textarea>
+          <textarea v-model="newSystemPrompt" placeholder="可选：设置系统提示词"></textarea>
         </div>
         <div class="form-group checkbox">
           <label>
@@ -91,13 +82,7 @@ function createNewConversation() {
         </div>
         <div class="dialog-buttons">
           <button @click="showNewConversationDialog = false">取消</button>
-          <button
-            class="primary"
-            @click="createNewConversation"
-            :disabled="!newConversationTitle.trim()"
-          >
-            创建
-          </button>
+          <button @click="createNewConversation" :disabled="!newConversationTitle.trim()">创建</button>
         </div>
       </div>
     </div>
@@ -113,6 +98,13 @@ function createNewConversation() {
   border-right: 1px solid #eaeaea;
   display: flex;
   flex-direction: column;
+}
+
+@media (max-width: 768px) {
+  .conversation-list {
+    width: 100%;
+    flex: 1;
+  }
 }
 
 .header {
@@ -214,10 +206,15 @@ function createNewConversation() {
 .form-group input,
 .form-group textarea {
   width: 100%;
-  padding: 8px;
+  padding: 8px 12px;
   border: 1px solid #ddd;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 14px;
+}
+
+.form-group textarea {
+  height: 100px;
+  resize: vertical;
 }
 
 .form-group.checkbox {
@@ -226,9 +223,9 @@ function createNewConversation() {
 }
 
 .form-group.checkbox label {
-  margin: 0;
   display: flex;
   align-items: center;
+  margin: 0;
   cursor: pointer;
 }
 
@@ -240,32 +237,30 @@ function createNewConversation() {
 .dialog-buttons {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 12px;
+  margin-top: 20px;
 }
 
 .dialog-buttons button {
   padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+  border-radius: 6px;
   font-size: 14px;
+  cursor: pointer;
 }
 
-.dialog-buttons button:not(.primary) {
+.dialog-buttons button:first-child {
   background: #f5f5f5;
-  color: #333;
+  border: 1px solid #ddd;
+  color: #666;
 }
 
-.dialog-buttons button.primary {
-  background: #007AFF;
+.dialog-buttons button:last-child {
+  background: #1677ff;
+  border: none;
   color: white;
 }
 
-.dialog-buttons button:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.dialog-buttons button:disabled {
+.dialog-buttons button:last-child:disabled {
   background: #ccc;
   cursor: not-allowed;
 }

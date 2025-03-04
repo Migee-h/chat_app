@@ -4,7 +4,7 @@
 export async function readExampleConversation() {
   try {
     console.log('开始读取示例对话文件...');
-    const response = await fetch('/src/assets/example_conversation.txt');
+    const response = await fetch(new URL('../assets/example_conversation.txt', import.meta.url).href);
     const text = await response.text();
     console.log('文件内容长度:', text.length);
 
